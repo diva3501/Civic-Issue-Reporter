@@ -11,7 +11,8 @@ import overgrowntrees from '../components/images/overgrowntrees.png';
 import propertydamage from '../components/images/propertydamage.png';
 import streetlightdamage from '../components/images/StreetLightdamage.png';
 import waterleak from '../components/images/waterleak.png';
-import profilePhoto from '../components/images/profile.png'; // Using a local image for the user profile
+import profilePhoto from '../components/images/profile.png';
+import pothole from '../components/images/pothole.png'; // Using a local image for the user profile
 
 // Fix for default Leaflet marker icon issues
 delete L.Icon.Default.prototype._getIconUrl;
@@ -286,7 +287,7 @@ const DiscussionPage = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 sm:mb-8">Community Discussions & Innovations</h1>
             <p className="text-sm sm:text-lg text-gray-600 mb-8 sm:mb-10">
                 Share your ideas, propose solutions, and collaborate with other citizens to build a better community.
-            </p>
+            </p>            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                 {discussions.map((post) => (
                     <DiscussionCard key={post.id} post={post} />
@@ -770,7 +771,7 @@ const CivilianDashboard = () => {
     const [issues, setIssues] = useState([
         {
             id: 1, trackingId: 'RK-250915-001', title: "Pothole near Main Road", description: "A large, deep pothole is causing traffic slowdowns and poses a risk to vehicles. Urgent repair is needed.",
-            category: "Roads", location: "Main Road, Ranchi", priority: "High", status: "Pending", image: waterleak,
+            category: "Roads", location: "Main Road, Ranchi", priority: "High", status: "Pending", image: pothole,
             upvotes: 25, isAnonymous: false, reporter: "Ravi Kumar", coordinates: [23.3646, 85.3134],
             activityLog: [{ type: 'reported', text: 'Issue reported by Ravi Kumar.', timestamp: "2025-09-15T10:00:00Z" }]
         },
@@ -951,36 +952,38 @@ const CivilianDashboard = () => {
                                         <textarea value={formData.description} onChange={(e) => handleInputChange("description", e.target.value)} rows={4} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Provide detailed information about the issue" required />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Photo *</label>
-                                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                                            {formData.image ? (
-                                                <img src={formData.image} alt="Captured preview" className="mx-auto w-48 h-auto mb-4 rounded-lg shadow-md" />
-                                            ) : (
-                                                <Camera className="mx-auto text-gray-400 mb-2" size={32} />
-                                            )}
-                                            <p className="text-gray-600 mb-4 text-sm">{isMobile ? "Tap to open your camera and capture the issue." : "Paste an image URL or choose a file."}</p>
-                                            <input
-                                                type={isMobile ? "file" : "url"}
-                                                accept="image/*"
-                                                capture="camera"
-                                                onChange={(e) => {
-                                                    if (isMobile) {
-                                                        const file = e.target.files[0];
-                                                        if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => { handleInputChange("image", reader.result); };
-                                                            reader.readAsDataURL(file);
-                                                        }
-                                                    } else {
-                                                        handleInputChange("image", e.target.value);
-                                                    }
-                                                }}
-                                                className={`w-full text-sm text-gray-500 ${isMobile ? 'file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100' : 'px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'}`}
-                                                placeholder={isMobile ? "" : "Enter image URL"}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">Photo *</label>
+    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+        {formData.image ? (
+            <img src={formData.image} alt="Captured preview" className="mx-auto w-48 h-auto mb-4 rounded-lg shadow-md" />
+        ) : (
+            <Camera className="mx-auto text-gray-400 mb-2" size={32} />
+        )}
+        <p className="text-gray-600 mb-4 text-sm">
+            {isMobile ? "Tap to open your camera and capture the issue." : "Please use a mobile device to report an issue with a photo."}
+        </p>
+        <input
+            type="file"
+            accept="image/*"
+            capture="camera"
+            onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => { handleInputChange("image", reader.result); };
+                    reader.readAsDataURL(file);
+                }
+            }}
+            className={`${isMobile ? 'w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100' : 'hidden'}`}
+            required={isMobile}
+        />
+        {!isMobile && (
+            <p className="text-sm text-gray-500 mt-2">
+                Photo submission is only available on mobile devices.
+            </p>
+        )}
+    </div>
+</div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Priority Level</label>
                                         <select value={formData.priority} onChange={(e) => handleInputChange("priority", e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
@@ -989,10 +992,7 @@ const CivilianDashboard = () => {
                                             <option value="High">High</option>
                                         </select>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <input type="checkbox" id="anonymous" checked={formData.isAnonymous} onChange={(e) => handleInputChange("isAnonymous", e.target.checked)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                                        <label htmlFor="anonymous" className="text-sm font-medium text-gray-700">Report Anonymously</label>
-                                    </div>
+                                    
                                     <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 pt-4">
                                         <button type="button" onClick={() => setShowForm(false)} className="w-full sm:w-auto px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors text-sm">
                                             Cancel

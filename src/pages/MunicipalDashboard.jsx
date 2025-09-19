@@ -18,9 +18,7 @@ import adminPhoto from '../components/images/admin-profile.jpeg';
 import userPhoto1 from '../components/images/user1.jpeg';
 import userPhoto2 from '../components/images/user2.jpeg';
 import userPhoto3 from '../components/images/user3.jpeg';
-import morabadiPark from '../components/images/morabadi-park.jpeg';
-import wasteManagement from '../components/images/waste-management.jpeg';
-import publicLibrary from '../components/images/public-library.jpeg';
+
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, ArcElement, BarElement, Title, Tooltip, Legend, PointElement, LineElement);
@@ -281,82 +279,172 @@ const IssueMap = ({ issues, onIssueSelect }) => {
     );
 };
 
+// ====================================================================
+// ===== START: UPDATED ANALYTICS DASHBOARD COMPONENT =================
+// ====================================================================
+
+// Reusable StatCard Component for KPIs
+const StatCard = ({ title, value, icon: Icon, colorClass }) => (
+    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg flex items-center space-x-4 transition-transform hover:scale-105 duration-300">
+        <div className={`p-3 rounded-full ${colorClass.bg}`}>
+            <Icon size={24} className={colorClass.text} />
+        </div>
+        <div>
+            <p className="text-sm text-gray-500 font-medium">{title}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-900">{value}</p>
+        </div>
+    </div>
+);
+
+// Reusable ChartCard Component for consistent styling
+const ChartCard = ({ title, children }) => (
+    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg h-full">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center sm:text-left">{title}</h3>
+        <div className="h-64 sm:h-80">{children}</div>
+    </div>
+);
+
+
 const AnalyticsDashboard = ({ issues, departments }) => {
-    const getDepartmentStats = () => {
+    // --- Data Processing for Charts ---
+
+    // 1. Departmental Workload (Bar Chart)
+    const departmentStats = React.useMemo(() => {
         const stats = {};
         departments.forEach(dept => {
             stats[dept] = issues.filter(issue => issue.assignedTo === dept).length;
         });
         stats['Unassigned'] = issues.filter(issue => !issue.assignedTo).length;
         return stats;
+    }, [issues, departments]);
+
+    const barChartData = {
+        labels: Object.keys(departmentStats),
+        datasets: [{
+            label: 'Issues Assigned',
+            data: Object.values(departmentStats),
+            backgroundColor: Object.keys(departmentStats).map(dept => dept === 'Unassigned' ? '#f97316' : '#3b82f6'),
+            borderRadius: 4,
+        }],
     };
 
-    const departmentStats = getDepartmentStats();
-    const departmentNames = Object.keys(departmentStats);
-    const totalIssues = issues.length;
-
-    const statusCounts = {
+    // 2. Issue Status Breakdown (Pie Chart)
+    const statusCounts = React.useMemo(() => ({
         pending: issues.filter(i => i.status === 'Pending').length,
         inProgress: issues.filter(i => i.status === 'In Progress').length,
         acknowledged: issues.filter(i => i.status === 'Acknowledged').length,
         resolved: issues.filter(i => i.status === 'Resolved').length,
-    };
+    }), [issues]);
 
     const pieChartData = {
         labels: ['Pending', 'In Progress', 'Acknowledged', 'Resolved'],
         datasets: [{
             data: [statusCounts.pending, statusCounts.inProgress, statusCounts.acknowledged, statusCounts.resolved],
             backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'],
+            borderColor: '#ffffff',
+            borderWidth: 2,
         }],
     };
 
-    const barChartData = {
-        labels: departmentNames,
-        datasets: [{
-            label: 'Issues Assigned',
-            data: Object.values(departmentStats),
-            backgroundColor: departmentNames.map(dept => dept === 'Unassigned' ? '#f97316' : '#2563eb'),
-        }],
-    };
+    // 3. NEW: Issue Reporting Trends (Line Chart)
+    const lineChartData = React.useMemo(() => {
+        const dailyCounts = issues.reduce((acc, issue) => {
+            const date = new Date(issue.timestamp).toISOString().split('T')[0];
+            acc[date] = (acc[date] || 0) + 1;
+            return acc;
+        }, {});
 
+        const sortedDates = Object.keys(dailyCounts).sort((a, b) => new Date(a) - new Date(b));
+        
+        return {
+            labels: sortedDates.map(date => new Date(date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })),
+            datasets: [{
+                label: 'Issues Reported per Day',
+                data: sortedDates.map(date => dailyCounts[date]),
+                fill: true,
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                borderColor: '#3b82f6',
+                tension: 0.3,
+                pointBackgroundColor: '#3b82f6',
+            }],
+        };
+    }, [issues]);
+
+    // --- Chart Options for better UI ---
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            },
+        },
+    };
+    
+    // --- Main Component Return ---
     return (
-        <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center space-x-2">
-                <TrendingUp size={24} />
+        <div className="bg-gray-100 p-4 sm:p-6 rounded-2xl shadow-inner">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 flex items-center space-x-3">
+                <BarChart3 size={28} className="text-blue-600" />
                 <span>Analytics & Reports</span>
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div className="p-4 bg-gray-50 rounded-lg shadow-inner">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Issue Status Breakdown</h3>
-                    <div className="w-full md:w-3/4 mx-auto">
-                        <Pie data={pieChartData} />
-                    </div>
+
+            {/* KPI Cards Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+                <StatCard 
+                    title="Total Issues" 
+                    value={issues.length} 
+                    icon={FileText} 
+                    colorClass={{ bg: 'bg-blue-100', text: 'text-blue-600' }} 
+                />
+                <StatCard 
+                    title="Issues Resolved" 
+                    value={statusCounts.resolved} 
+                    icon={CheckCircle} 
+                    colorClass={{ bg: 'bg-green-100', text: 'text-green-600' }} 
+                />
+                <StatCard 
+                    title="In Progress" 
+                    value={statusCounts.inProgress} 
+                    icon={Clock} 
+                    colorClass={{ bg: 'bg-yellow-100', text: 'text-yellow-600' }} 
+                />
+                <StatCard 
+                    title="Pending Action" 
+                    value={statusCounts.pending} 
+                    icon={TrendingUp} 
+                    colorClass={{ bg: 'bg-red-100', text: 'text-red-600' }} 
+                />
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div className="lg:col-span-1">
+                    <ChartCard title="Issue Status Breakdown">
+                        <Pie data={pieChartData} options={chartOptions} />
+                    </ChartCard>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg shadow-inner col-span-1 md:col-span-2">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Departmental Workload</h3>
-                    <Bar data={barChartData} />
+                <div className="lg:col-span-2">
+                    <ChartCard title="Issue Reporting Trends">
+                        <Line data={lineChartData} options={chartOptions} />
+                    </ChartCard>
                 </div>
             </div>
-            <div className="mt-8 pt-8 border-t border-gray-200">
-                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance Metrics</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    <div className="bg-green-50 p-6 rounded-lg shadow-sm text-center">
-                        <div className="text-3xl font-bold text-green-600">{issues.filter(i => i.status === 'Resolved').length}</div>
-                        <p className="text-gray-600 mt-1">Issues Resolved</p>
-                    </div>
-                    <div className="bg-yellow-50 p-6 rounded-lg shadow-sm text-center">
-                        <div className="text-3xl font-bold text-yellow-600">{issues.filter(i => i.status === 'In Progress').length}</div>
-                        <p className="text-gray-600 mt-1">In Progress</p>
-                    </div>
-                     <div className="bg-red-50 p-6 rounded-lg shadow-sm text-center">
-                        <div className="text-3xl font-bold text-red-600">{issues.filter(i => i.status === 'Pending').length}</div>
-                        <p className="text-gray-600 mt-1">Pending</p>
-                    </div>
+
+            <div className="grid grid-cols-1 gap-6">
+                 <div className="lg:col-span-3">
+                    <ChartCard title="Departmental Workload">
+                        <Bar data={barChartData} options={chartOptions} />
+                    </ChartCard>
                 </div>
             </div>
         </div>
     );
 };
+
+// ====================================================================
+// ===== END: UPDATED ANALYTICS DASHBOARD COMPONENT ===================
+// ====================================================================
 
 const DepartmentIcon = ({ department }) => {
     switch(department) {
